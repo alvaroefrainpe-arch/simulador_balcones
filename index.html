@@ -1,0 +1,554 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Simulador de crédito hipotecario</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    background: #f5f5f5;
+    color: #1a1a1a;
+    line-height: 1.5;
+    padding: 16px;
+    min-height: 100vh;
+  }
+  .container {
+    max-width: 480px;
+    margin: 0 auto;
+    background: #ffffff;
+    border-radius: 12px;
+    padding: 24px;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+  }
+  .header {
+    display: flex; justify-content: space-between; align-items: center;
+    padding-bottom: 16px;
+    border-bottom: 1px solid #ececec;
+    margin-bottom: 24px;
+  }
+  .title { font-size: 17px; font-weight: 600; }
+  .steps { display: flex; gap: 6px; }
+  .step-dot {
+    width: 20px; height: 3px; background: #e0e0e0; border-radius: 2px;
+    transition: background 0.3s;
+  }
+  .step-dot.active { background: #2563eb; }
+
+  .slider-group { margin-bottom: 20px; }
+  .slider-label {
+    display: flex; justify-content: space-between; align-items: baseline;
+    margin-bottom: 8px;
+  }
+  .slider-label label { font-size: 13px; color: #666; }
+  .slider-label .value { font-size: 15px; font-weight: 600; color: #1a1a1a; }
+
+  input[type="range"] {
+    -webkit-appearance: none; appearance: none;
+    width: 100%; height: 4px;
+    background: #e0e0e0;
+    outline: none; border-radius: 2px;
+  }
+  input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none; appearance: none;
+    width: 20px; height: 20px;
+    background: #2563eb; border-radius: 50%;
+    cursor: pointer; border: 3px solid #ffffff;
+    box-shadow: 0 0 0 1px #2563eb;
+  }
+  input[type="range"]::-moz-range-thumb {
+    width: 14px; height: 14px;
+    background: #2563eb; border-radius: 50%;
+    cursor: pointer; border: 3px solid #ffffff;
+    box-shadow: 0 0 0 1px #2563eb;
+  }
+  .slider-extremes {
+    display: flex; justify-content: space-between;
+    margin-top: 4px;
+    font-size: 11px; color: #999;
+  }
+
+  .result {
+    background: #1a1a1a;
+    color: #ffffff;
+    padding: 20px;
+    border-radius: 8px;
+    margin: 24px 0;
+  }
+  .result-main {
+    display: flex; justify-content: space-between; align-items: baseline;
+    margin-bottom: 12px;
+  }
+  .result-main .lbl { font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase; opacity: 0.7; }
+  .result-main .val { font-size: 28px; font-weight: 700; }
+  .result-detail {
+    display: flex; justify-content: space-between;
+    padding-top: 10px;
+    border-top: 1px solid rgba(255,255,255,0.15);
+    font-size: 12px;
+  }
+  .result-detail span:first-child { opacity: 0.7; }
+  .result-detail.no-border { border-top: none; padding-top: 4px; }
+
+  .btn {
+    width: 100%;
+    padding: 14px;
+    border: none;
+    border-radius: 8px;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-family: inherit;
+  }
+  .btn-primary { background: #2563eb; color: #ffffff; }
+  .btn-primary:hover { background: #1d4ed8; }
+  .btn-primary:disabled { background: #9ca3af; cursor: not-allowed; }
+  .btn-secondary {
+    background: transparent;
+    color: #1a1a1a;
+    border: 1px solid #d0d0d0;
+    padding: 14px 20px;
+    width: auto;
+  }
+  .btn-secondary:hover { background: #f5f5f5; }
+
+  .helper {
+    text-align: center;
+    font-size: 11px;
+    color: #999;
+    margin-top: 10px;
+  }
+
+  .recap {
+    background: #fef3e2;
+    border-left: 3px solid #f59e0b;
+    padding: 12px 14px;
+    margin-bottom: 20px;
+    font-size: 13px;
+    border-radius: 4px;
+  }
+  .recap strong { color: #1a1a1a; }
+
+  .form-group { margin-bottom: 14px; }
+  .form-group label {
+    display: block;
+    font-size: 13px;
+    color: #666;
+    margin-bottom: 5px;
+  }
+  .form-group input, .form-group select {
+    width: 100%;
+    padding: 11px 13px;
+    border: 1px solid #d0d0d0;
+    border-radius: 6px;
+    font-size: 14px;
+    font-family: inherit;
+    outline: none;
+    background: #ffffff;
+    color: #1a1a1a;
+    transition: border-color 0.2s;
+  }
+  .form-group input:focus, .form-group select:focus { border-color: #2563eb; }
+
+  .radio-stack { display: flex; flex-direction: column; gap: 6px; }
+  .radio-option {
+    display: flex; align-items: center; gap: 10px;
+    padding: 12px 14px;
+    border: 1px solid #d0d0d0;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.2s;
+    background: #ffffff;
+  }
+  .radio-option:hover { border-color: #2563eb; background: #f8fafc; }
+  .radio-option input[type="radio"] { accent-color: #2563eb; cursor: pointer; }
+  .radio-option span { font-size: 14px; }
+
+  .row { display: flex; gap: 10px; }
+  .row .btn-secondary { flex: 0 0 auto; }
+  .row .btn-primary { flex: 1; }
+
+  .thanks {
+    text-align: center;
+    padding: 20px 0;
+  }
+  .thanks-icon {
+    width: 56px; height: 56px;
+    border-radius: 50%;
+    background: #16a34a;
+    color: #ffffff;
+    margin: 0 auto 16px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 28px; font-weight: 700;
+  }
+  .thanks h3 { font-size: 20px; margin-bottom: 8px; }
+  .thanks p { font-size: 14px; color: #666; margin-bottom: 20px; }
+  .wa-button {
+    display: inline-flex; align-items: center; gap: 8px;
+    background: #25D366;
+    color: #ffffff;
+    padding: 12px 20px;
+    border-radius: 8px;
+    text-decoration: none;
+    font-weight: 600;
+    font-size: 14px;
+  }
+  .wa-button:hover { background: #1ebe5d; }
+
+  .error {
+    background: #fef2f2;
+    color: #991b1b;
+    padding: 10px 12px;
+    border-radius: 6px;
+    font-size: 13px;
+    margin-bottom: 14px;
+    display: none;
+  }
+</style>
+</head>
+<body>
+
+<div class="container">
+  <div class="header">
+    <div class="title">Simulá tu cuota</div>
+    <div class="steps" id="steps">
+      <div class="step-dot active"></div>
+      <div class="step-dot"></div>
+      <div class="step-dot"></div>
+    </div>
+  </div>
+
+  <!-- PANTALLA 1: SIMULACIÓN -->
+  <div id="screen-1">
+    <div class="slider-group">
+      <div class="slider-label">
+        <label>Valor de la unidad</label>
+        <span class="value" id="price-out">USD 55.000</span>
+      </div>
+      <input type="range" id="price" min="45000" max="85000" step="1000" value="55000">
+      <div class="slider-extremes">
+        <span>1 ambiente</span>
+        <span>3 ambientes</span>
+      </div>
+    </div>
+
+    <div class="slider-group">
+      <div class="slider-label">
+        <label>Anticipo</label>
+        <span class="value" id="down-out">25% · USD 13.750</span>
+      </div>
+      <input type="range" id="down" min="20" max="40" step="5" value="25">
+    </div>
+
+    <div class="slider-group">
+      <div class="slider-label">
+        <label>Plazo</label>
+        <span class="value" id="term-out">15 años</span>
+      </div>
+      <input type="range" id="term" min="10" max="30" step="1" value="15">
+    </div>
+
+    <div class="result">
+      <div class="result-main">
+        <span class="lbl">Tu cuota mensual</span>
+        <span class="val" id="cuota-out">USD 547</span>
+      </div>
+      <div class="result-detail">
+        <span>Equivalente en pesos</span>
+        <span id="pesos-out">~$650.000 ARS</span>
+      </div>
+      <div class="result-detail no-border">
+        <span>Ingreso sugerido</span>
+        <span id="ingreso-out">USD 1.825</span>
+      </div>
+    </div>
+
+    <button class="btn btn-primary" id="to-2">Continuar →</button>
+    <p class="helper">Sin compromiso · Te contactamos en 24 hs</p>
+  </div>
+
+  <!-- PANTALLA 2: CONTACTO -->
+  <div id="screen-2" style="display:none;">
+    <div class="recap">
+      Tu cuota simulada: <strong id="cuota-recap">USD 547</strong>/mes<br>
+      <span style="opacity:0.75;">Dejanos tus datos para reservar tu unidad.</span>
+    </div>
+
+    <div class="error" id="error-2"></div>
+
+    <div class="form-group">
+      <label>Tu nombre</label>
+      <input type="text" id="lead-name" placeholder="Nombre y apellido">
+    </div>
+
+    <div class="form-group">
+      <label>WhatsApp</label>
+      <input type="tel" id="lead-phone" placeholder="+54 9 387 ...">
+    </div>
+
+    <div class="form-group">
+      <label>Email</label>
+      <input type="email" id="lead-email" placeholder="tu@email.com">
+    </div>
+
+    <div class="form-group">
+      <label>Ingreso familiar mensual (USD aprox.)</label>
+      <select id="lead-income">
+        <option value="">Seleccioná tu rango</option>
+        <option value="under-1500">Menos de USD 1.500</option>
+        <option value="1500-2500">USD 1.500 - 2.500</option>
+        <option value="2500-4000">USD 2.500 - 4.000</option>
+        <option value="over-4000">Más de USD 4.000</option>
+      </select>
+    </div>
+
+    <div class="row">
+      <button class="btn btn-secondary" id="back-1">←</button>
+      <button class="btn btn-primary" id="to-3">Continuar →</button>
+    </div>
+  </div>
+
+  <!-- PANTALLA 3: CALIFICACIÓN -->
+  <div id="screen-3" style="display:none;">
+    <div style="margin-bottom: 18px;">
+      <h3 style="font-size:17px; margin-bottom:4px;">Casi listo</h3>
+      <p style="color:#666; font-size:13px;">Dos datos finales para asignarte un asesor.</p>
+    </div>
+
+    <div class="error" id="error-3"></div>
+
+    <div class="form-group">
+      <label>¿Cuándo te gustaría comprar?</label>
+      <div class="radio-stack">
+        <label class="radio-option"><input type="radio" name="timing" value="0-3m"> <span>En los próximos 3 meses</span></label>
+        <label class="radio-option"><input type="radio" name="timing" value="3-6m"> <span>3 a 6 meses</span></label>
+        <label class="radio-option"><input type="radio" name="timing" value="6-12m"> <span>6 a 12 meses</span></label>
+        <label class="radio-option"><input type="radio" name="timing" value="explorando"> <span>Solo estoy explorando</span></label>
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label>¿Tenés el anticipo disponible?</label>
+      <div class="radio-stack">
+        <label class="radio-option"><input type="radio" name="anticipo" value="ya"> <span>Sí, ya lo tengo</span></label>
+        <label class="radio-option"><input type="radio" name="anticipo" value="parcial"> <span>Tengo una parte</span></label>
+        <label class="radio-option"><input type="radio" name="anticipo" value="ahorrando"> <span>Estoy ahorrando</span></label>
+      </div>
+    </div>
+
+    <div class="row">
+      <button class="btn btn-secondary" id="back-2">←</button>
+      <button class="btn btn-primary" id="submit">Enviar ✓</button>
+    </div>
+  </div>
+
+  <!-- THANKS -->
+  <div id="screen-thanks" style="display:none;" class="thanks">
+    <div class="thanks-icon">✓</div>
+    <h3>¡Gracias!</h3>
+    <p>Recibimos tus datos. Un asesor te contactará por WhatsApp en las próximas 24 hs.</p>
+    <a href="#" id="wa-link" class="wa-button" style="display:none;">Hablar por WhatsApp ahora</a>
+  </div>
+</div>
+
+<script>
+(function() {
+  /* ════════════════════════════════════════════════════
+     CONFIGURACIÓN — EDITAR ANTES DE USAR
+     ════════════════════════════════════════════════════ */
+
+  // 1) Google Forms — pegar el endpoint y los entry IDs (ver README)
+  const GOOGLE_FORM_URL = 'https://docs.google.com/forms/d/e/1FAIpQLSewPv9Vt7RShZTCmb-6nyC-UDrgMB6zbX-hEhtBZRQXro-YpA/formResponse';
+  const ENTRY_IDS = {
+    name:           'entry.889730318',
+    phone:          'entry.1151278228',
+    email:          'entry.920202960',
+    income:         'entry.323459921',
+    timing:         'entry.758629675',
+    anticipo:       'entry.641846870',
+    price:          'entry.551922510',
+    downPct:        'entry.445775146',
+    term:           'entry.1108423704',
+    cuota:          'entry.1998709658',
+    classification: 'entry.900500472',
+    timestamp:      'entry.700045699'
+  };
+
+  // 2) WhatsApp Business (formato internacional sin "+")
+  const WHATSAPP_NUMBER = '5493875056573';
+
+  // 3) Parámetros financieros
+  const TASA_UVA_ANUAL = 0.15;      // 15% anual fija — sistema francés
+  const TIPO_CAMBIO_MEP = 1200;     // ajustar periódicamente
+
+  /* ════════════════════════════════════════════════════
+     Cuando migres a Bitrix24, sólo cambiá la función
+     submitToBackend() de abajo. El resto queda igual.
+     ════════════════════════════════════════════════════ */
+
+  const $ = (id) => document.getElementById(id);
+  const fmt = (n) => '$' + Math.round(n).toLocaleString('es-AR');
+  const fmtUSD = (n) => 'USD ' + Math.round(n).toLocaleString('es-AR');
+
+  let leadData = {};
+
+  function calcular() {
+    const price = parseInt($('price').value);
+    const downPct = parseInt($('down').value);
+    const term = parseInt($('term').value);
+
+    const down = price * (downPct / 100);
+    const financed = price - down;
+    const n = term * 12;
+    const r = TASA_UVA_ANUAL / 12;
+    const cuota = financed * (r * Math.pow(1+r, n)) / (Math.pow(1+r, n) - 1);
+    const ingresoSugerido = cuota / 0.30;
+
+    $('price-out').textContent = fmtUSD(price);
+    $('down-out').textContent = downPct + '% · ' + fmtUSD(down);
+    $('term-out').textContent = term + ' años';
+    $('cuota-out').textContent = fmtUSD(cuota);
+    $('pesos-out').textContent = '~' + fmt(cuota * TIPO_CAMBIO_MEP) + ' ARS';
+    $('ingreso-out').textContent = fmtUSD(ingresoSugerido);
+    $('cuota-recap').textContent = fmtUSD(cuota);
+
+    leadData.price = price;
+    leadData.downPct = downPct;
+    leadData.term = term;
+    leadData.cuota = Math.round(cuota);
+  }
+
+  function showScreen(n) {
+    ['1','2','3','thanks'].forEach(s => {
+      const el = $('screen-' + s);
+      if (el) el.style.display = 'none';
+    });
+    $('screen-' + n).style.display = 'block';
+
+    const dots = document.querySelectorAll('#steps .step-dot');
+    const idx = (n === 'thanks') ? 3 : parseInt(n);
+    dots.forEach((d, i) => d.classList.toggle('active', i < idx));
+  }
+
+  function classifyLead(l) {
+    const t = l.timing || '';
+    const a = l.anticipo || '';
+    const i = l.income || '';
+    if ((t === '0-3m' || t === '3-6m') &&
+        (a === 'ya' || a === 'parcial') &&
+        (i === '1500-2500' || i === '2500-4000' || i === 'over-4000')) {
+      return 'A';
+    }
+    if (t === 'explorando' || a === 'ahorrando') return 'C';
+    return 'B';
+  }
+
+  function showError(screen, msg) {
+    const el = $('error-' + screen);
+    if (el) {
+      el.textContent = msg;
+      el.style.display = 'block';
+      setTimeout(() => el.style.display = 'none', 4000);
+    }
+  }
+
+  /* ─────── Capa de envío de leads ───────
+     Para migrar a Bitrix24 más adelante: reemplazar
+     todo el contenido de esta función por una llamada
+     al webhook de Bitrix. La estructura de leadData
+     no cambia. */
+  async function submitToBackend(data) {
+    // Google Forms requiere envío con FormData en modo "no-cors"
+    const formData = new FormData();
+    formData.append(ENTRY_IDS.name, data.name || '');
+    formData.append(ENTRY_IDS.phone, data.phone || '');
+    formData.append(ENTRY_IDS.email, data.email || '');
+    formData.append(ENTRY_IDS.income, data.income || '');
+    formData.append(ENTRY_IDS.timing, data.timing || '');
+    formData.append(ENTRY_IDS.anticipo, data.anticipo || '');
+    formData.append(ENTRY_IDS.price, data.price || '');
+    formData.append(ENTRY_IDS.downPct, data.downPct || '');
+    formData.append(ENTRY_IDS.term, data.term || '');
+    formData.append(ENTRY_IDS.cuota, data.cuota || '');
+    formData.append(ENTRY_IDS.classification, data.classification || '');
+    formData.append(ENTRY_IDS.timestamp, data.timestamp || '');
+
+    return fetch(GOOGLE_FORM_URL, {
+      method: 'POST',
+      mode: 'no-cors',
+      body: formData
+    });
+  }
+
+  async function handleSubmit() {
+    // Validación pantalla 3
+    const timing = document.querySelector('input[name="timing"]:checked');
+    const anticipo = document.querySelector('input[name="anticipo"]:checked');
+    if (!timing || !anticipo) {
+      showError('3', 'Por favor seleccioná las dos opciones.');
+      return;
+    }
+
+    leadData.name = $('lead-name').value.trim();
+    leadData.phone = $('lead-phone').value.trim();
+    leadData.email = $('lead-email').value.trim();
+    leadData.income = $('lead-income').value;
+    leadData.timing = timing.value;
+    leadData.anticipo = anticipo.value;
+    leadData.classification = classifyLead(leadData);
+    leadData.timestamp = new Date().toISOString();
+
+    if (GOOGLE_FORM_URL.includes('REEMPLAZAR_FORM_ID')) {
+      console.warn('⚠️ Google Forms no configurado. Datos en consola:');
+      console.log(leadData);
+    } else {
+      try {
+        await submitToBackend(leadData);
+      } catch (e) {
+        console.error('Error enviando:', e);
+        // Igual mostramos la pantalla de gracias — el lead queda en consola
+      }
+    }
+
+    // Setup WhatsApp link con datos pre-cargados
+    const waMsg = encodeURIComponent(
+      `Hola! Soy ${leadData.name}. Hice la simulación y mi cuota sería USD ${leadData.cuota}/mes. Quiero más información.`
+    );
+    const waLink = $('wa-link');
+    waLink.href = `https://wa.me/${WHATSAPP_NUMBER}?text=${waMsg}`;
+    waLink.style.display = 'inline-flex';
+
+    showScreen('thanks');
+  }
+
+  // Event listeners
+  ['price', 'down', 'term'].forEach(id => $(id).addEventListener('input', calcular));
+
+  $('to-2').addEventListener('click', () => showScreen('2'));
+  $('back-1').addEventListener('click', () => showScreen('1'));
+  $('to-3').addEventListener('click', () => {
+    const name = $('lead-name').value.trim();
+    const phone = $('lead-phone').value.trim();
+    const email = $('lead-email').value.trim();
+    const income = $('lead-income').value;
+    if (!name || !phone || !email || !income) {
+      showError('2', 'Por favor completá todos los campos.');
+      return;
+    }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      showError('2', 'Email inválido.');
+      return;
+    }
+    showScreen('3');
+  });
+  $('back-2').addEventListener('click', () => showScreen('2'));
+  $('submit').addEventListener('click', handleSubmit);
+
+  calcular();
+})();
+</script>
+
+</body>
+</html>
