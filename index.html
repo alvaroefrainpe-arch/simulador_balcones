@@ -360,21 +360,7 @@
      ════════════════════════════════════════════════════ */
 
   // 1) Google Forms — pegar el endpoint y los entry IDs (ver README)
-  const GOOGLE_FORM_URL = 'https://docs.google.com/forms/d/e/1FAIpQLSewPv9Vt7RShZTCmb-6nyC-UDrgMB6zbX-hEhtBZRQXro-YpA/formResponse';
-  const ENTRY_IDS = {
-    name:           'entry.889730318',
-    phone:          'entry.1151278228',
-    email:          'entry.920202960',
-    income:         'entry.323459921',
-    timing:         'entry.758629675',
-    anticipo:       'entry.641846870',
-    price:          'entry.551922510',
-    downPct:        'entry.445775146',
-    term:           'entry.1108423704',
-    cuota:          'entry.1998709658',
-    classification: 'entry.900500472',
-    timestamp:      'entry.700045699'
-  };
+  const BACKEND_URL = 'https://script.google.com/macros/s/AKfycbzoMY81ZPZ1LU8jnQ8yC5FlYowCZWE7rXeZPQMbH8Vd3gl3F3UJ6-aftgMJCMoP_tE/exec';
 
   // 2) WhatsApp Business (formato internacional sin "+")
   const WHATSAPP_NUMBER = '5493875056573';
@@ -454,31 +440,44 @@
     }
   }
 
-  /* ─────── Capa de envío de leads ───────
-     Para migrar a Bitrix24 más adelante: reemplazar
-     todo el contenido de esta función por una llamada
-     al webhook de Bitrix. La estructura de leadData
-     no cambia. */
-  async function submitToBackend(data) {
-    // Google Forms requiere envío con FormData en modo "no-cors"
-    const formData = new FormData();
-    formData.append(ENTRY_IDS.name, data.name || '');
-    formData.append(ENTRY_IDS.phone, data.phone || '');
-    formData.append(ENTRY_IDS.email, data.email || '');
-    formData.append(ENTRY_IDS.income, data.income || '');
-    formData.append(ENTRY_IDS.timing, data.timing || '');
-    formData.append(ENTRY_IDS.anticipo, data.anticipo || '');
-    formData.append(ENTRY_IDS.price, data.price || '');
-    formData.append(ENTRY_IDS.downPct, data.downPct || '');
-    formData.append(ENTRY_IDS.term, data.term || '');
-    formData.append(ENTRY_IDS.cuota, data.cuota || '');
-    formData.append(ENTRY_IDS.classification, data.classification || '');
-    formData.append(ENTRY_IDS.timestamp, data.timestamp || '');
+  const INCOME_LABELS = {
+    'under-1500': 'Menos de USD 1.500',
+    '1500-2500':  'USD 1.500 - 2.500',
+    '2500-4000':  'USD 2.500 - 4.000',
+    'over-4000':  'Más de USD 4.000'
+  };
+  const TIMING_LABELS = {
+    '0-3m':       'Menos de 3 meses',
+    '3-6m':       '3 a 6 meses',
+    '6-12m':      '6 a 12 meses',
+    'explorando': 'Solo estoy explorando'
+  };
+  const ANTICIPO_LABELS = {
+    'ya':        'Sí, ya lo tengo',
+    'parcial':   'Tengo una parte',
+    'ahorrando': 'Estoy ahorrando'
+  };
 
-    return fetch(GOOGLE_FORM_URL, {
+  async function submitToBackend(data) {
+    const params = new URLSearchParams({
+      name:           data.name           || '',
+      phone:          data.phone          || '',
+      email:          data.email          || '',
+      income:         INCOME_LABELS[data.income]   || data.income   || '',
+      timing:         TIMING_LABELS[data.timing]   || data.timing   || '',
+      anticipo:       ANTICIPO_LABELS[data.anticipo] || data.anticipo || '',
+      price:          'USD ' + (data.price || ''),
+      downPct:        (data.downPct || '') + '%',
+      term:           (data.term || '') + ' años',
+      cuota:          'USD ' + (data.cuota || ''),
+      classification: data.classification || '',
+      timestamp:      data.timestamp      || ''
+    });
+
+    return fetch(BACKEND_URL, {
       method: 'POST',
       mode: 'no-cors',
-      body: formData
+      body: params
     });
   }
 
@@ -500,15 +499,14 @@
     leadData.classification = classifyLead(leadData);
     leadData.timestamp = new Date().toISOString();
 
-    if (GOOGLE_FORM_URL.includes('REEMPLAZAR_FORM_ID')) {
-      console.warn('⚠️ Google Forms no configurado. Datos en consola:');
+    if (BACKEND_URL.includes('PENDIENTE')) {
+      console.warn('⚠️ Backend no configurado. Datos en consola:');
       console.log(leadData);
     } else {
       try {
         await submitToBackend(leadData);
       } catch (e) {
         console.error('Error enviando:', e);
-        // Igual mostramos la pantalla de gracias — el lead queda en consola
       }
     }
 
